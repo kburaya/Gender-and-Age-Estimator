@@ -5,7 +5,7 @@ import re
 import nltk
 import string
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+from nltk.stem import PorterStemmer
 
 #GLOBAL VARIABLES SECTION
 users_texts_by_age = dict()
@@ -88,17 +88,26 @@ def get_ngrams(texts, n):
     ngrams = dict()
     cachedStopWords = stopwords.words("english")
     exclude = set(string.punctuation)
-    wordnet_lemmatizer = WordNetLemmatizer()
+    stemmer = PorterStemmer()
     for text in texts:
-        text = re.sub('@[A-Za-z0-9_-]*', '', text)
+        text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
         text = re.sub(r'http\S+', '', text)
+        text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
+        text = re.sub(r'pic\S+', '', text)
+
         text = nltk.word_tokenize(text)
+        for i in range(0, text.__len__()):
+            text[i] = text[i].lower()
+            text[i] = stemmer.stem(text[i])
+
+
         text = ' '.join([word for word in text if word not in cachedStopWords])
         text = ''.join(ch for ch in text if ch not in exclude)
 
+        text = nltk.word_tokenize(text)
 
         ngrams_list = nltk.ngrams(text, n)
-        ngrams_list = [ ' '.join(grams) for grams in ngrams_list]
+        ngrams_list = [ ''.join(grams) for grams in ngrams_list]
         for ngram in ngrams_list:
             if not ngram in ngrams:
                 ngrams[ngram] = 1
@@ -107,25 +116,50 @@ def get_ngrams(texts, n):
 
     return ngrams
 
+
+def calculate_ngrams_dicts():
+    # NGRAMS FEATURE SECTION BEGIN
+    # Calculate the most popular ngrams for age/sex classes
+    # TODO uncomment if neccessary!
+    # nltk.download()
+
+
+    # dictionary of dictionaries for 1000 most popular ngrams
+    age_1gram_dict = dict()
+    age_2gram_dict = dict()
+    age_3gram_dict = dict()
+
+    for i in range(1, 3):
+        # Building dictionaries of ngrams
+        for age in users_texts_by_age:
+            age_ngram = get_ngrams(users_texts_by_age[age], i)
+            age_ngram = list(reversed(sorted(age_ngram, key=age_ngram.get)))
+            # left fisrt 1000 most popular ngrams
+            if age_ngram.__len__() > 1000:
+                age_ngram = age_ngram[0:1000]
+            if i == 1:
+                age_1gram_dict[age] = [age_ngram]
+            elif i == 2:
+                age_2gram_dict[age] = [age_ngram]
+            elif i == 3:
+                age_3gram_dict[age] = [age_ngram]
+
+    with open('Resources/' + 'age_1gram_dict' + '.pkl', 'wb') as f:
+        pickle.dump(age_1gram_dict, f, pickle.HIGHEST_PROTOCOL)
+    with open('Resources/' + 'age_2gram_dict' + '.pkl', 'wb') as f:
+        pickle.dump(age_2gram_dict, f, pickle.HIGHEST_PROTOCOL)
+    with open('Resources/' + 'age_3gram_dict' + '.pkl', 'wb') as f:
+        pickle.dump(age_3gram_dict, f, pickle.HIGHEST_PROTOCOL)
+
+        # NGRAMS FEATURE CALCULATION SECTION END
+    return
+
+
 def main():
     read_data()
     #calculate_mentions_feature()
+    #calculate_ngrams_dicts()
 
-    #NGRAMS FEATURE SECTION BEGIN
-    #Calculate the most popular ngrams for age/sex classes
-    #TODO uncomment if neccessary!
-    #nltk.download()
-
-    age_ngram_dict = dict()
-    for i in range(1, 2):
-        #Building dictionaries of ngrams
-        for age in users_texts_by_age:
-            age_ngram = get_ngrams(users_texts_by_age[age], i)
-            age_ngram = list(reversed(sorted(age_ngram, key = age_ngram.get)))
-            print ("Success")
-
-
-    print ("Success")
     return
 
 if __name__ == "__main__":
