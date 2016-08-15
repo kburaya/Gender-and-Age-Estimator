@@ -119,48 +119,57 @@ def get_ngrams(texts, n):
 
 
 def calculate_ngrams_dicts():
-    # NGRAMS FEATURE SECTION BEGIN
     # Calculate the most popular ngrams for age/sex classes
     # TODO uncomment if neccessary!
     # nltk.download()
 
 
     # dictionary of dictionaries for 1000 most popular ngrams
-    age_1gram_dict = dict()
-    age_2gram_dict = dict()
-    age_3gram_dict = dict()
+    age_ngrams_dict = dict()
 
-    for i in range(1, 3):
+    for i in range(1, 4):
         # Building dictionaries of ngrams
+        if i not in age_ngrams_dict:
+            age_ngrams_dict[i] = dict()
+        else:
+            continue
+
         for age in users_texts_by_age:
             age_ngram = get_ngrams(users_texts_by_age[age], i)
             age_ngram = list(reversed(sorted(age_ngram, key=age_ngram.get)))
             # left fisrt 1000 most popular ngrams
             if age_ngram.__len__() > 1000:
                 age_ngram = age_ngram[0:1000]
-            if i == 1:
-                age_1gram_dict[age] = [age_ngram]
-            elif i == 2:
-                age_2gram_dict[age] = [age_ngram]
-            elif i == 3:
-                age_3gram_dict[age] = [age_ngram]
+            age_ngrams_dict[i][age] = [age_ngram]
 
-    with open('Resources/' + 'age_1gram_dict' + '.pkl', 'wb') as f:
-        pickle.dump(age_1gram_dict, f, pickle.HIGHEST_PROTOCOL)
-    with open('Resources/' + 'age_2gram_dict' + '.pkl', 'wb') as f:
-        pickle.dump(age_2gram_dict, f, pickle.HIGHEST_PROTOCOL)
-    with open('Resources/' + 'age_3gram_dict' + '.pkl', 'wb') as f:
-        pickle.dump(age_3gram_dict, f, pickle.HIGHEST_PROTOCOL)
+    with open('Resources/' + 'age_ngrams_dict' + '.pkl', 'wb') as f:
+        pickle.dump(age_ngrams_dict, f, pickle.HIGHEST_PROTOCOL)
 
-        # NGRAMS FEATURE CALCULATION SECTION END
+    sex_ngrams_dict = dict()
+    for i in range(1, 4):
+        if i not in sex_ngrams_dict:
+            sex_ngrams_dict[i] = dict()
+        else:
+            continue
 
-    #TODO calculate sex user ngrams
+        for sex in users_texts_by_sex:
+            sex_ngrams = get_ngrams(users_texts_by_sex[sex], i)
+            sex_ngrams = list(reversed(sorted(sex_ngrams, key=sex_ngrams.get)))
+            if sex_ngrams.__len__() > 100:
+                sex_ngrams = sex_ngrams[0:1000]
+            sex_ngrams_dict[i][sex] = [sex_ngrams]
+
+    with open('Resources/' + 'sex_ngrams_dict' + '.pkl', 'wb') as f:
+        pickle.dump(sex_ngrams_dict, f, pickle.HIGHEST_PROTOCOL)
     return
 
 
 def calculate_ngrams_features():
-    file = open('Resources/age_1gram_dict.pkl', 'rb')
-    age_1gram_dict = pickle.load(file)
+    file = open('Resources/age_ngrams_dict.pkl', 'rb')
+    age_ngrams_dict = pickle.load(file)
+    file = open('Resources/sex_ngrams_dict.pkl', 'rb')
+    sex_ngrams_dict = pickle.load(file)
+
     #calculate average number of age/sex ngrams per message for every user
     global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
     data['avr_age_user_1grams'] = 0
@@ -169,6 +178,12 @@ def calculate_ngrams_features():
     data['avr_age_user_1grams'] = data['avr_age_user_1grams'].astype(np.float)
     data['avr_age_user_2grams'] = data['avr_age_user_2grams'].astype(np.float)
     data['avr_age_user_3grams'] = data['avr_age_user_3grams'].astype(np.float)
+    data['avr_sex_user_1grams'] = 0
+    data['avr_sex_user_2grams'] = 0
+    data['avr_sex_user_3grams'] = 0
+    data['avr_sex_user_1grams'] = data['avr_sex_user_1grams'].astype(np.float)
+    data['avr_sex_user_2grams'] = data['avr_sex_user_2grams'].astype(np.float)
+    data['avr_sex_user_3grams'] = data['avr_sex_user_3grams'].astype(np.float)
 
     for index, row in data.iterrows():
         user = row['user']
@@ -180,18 +195,57 @@ def calculate_ngrams_features():
             continue
 
         #1grams
-        num_user_1grams = 0
+        num_user_age_1grams = 0
+        num_user_sex_1grams = 0
+
         user_ngrams = get_ngrams(tweets, 1)
-        age_ngrams_dict = age_1gram_dict[age]
 
         for ngram in user_ngrams:
-            if ngram in age_ngrams_dict[0]:
-                num_user_1grams += 1
+            if ngram in age_ngrams_dict[1][age][0]:
+                num_user_age_1grams += 1
+            if ngram in sex_ngrams_dict[1][sex][0]:
+                num_user_sex_1grams += 1
 
-        avr_user_1grams = (float)(num_user_1grams / tweets.__len__())
-        data.avr_age_user_1grams[data.user == user] = avr_user_1grams
-        print ("Success")
+        avr_user_age_1grams = (float)(num_user_age_1grams / tweets.__len__())
+        data.avr_age_user_1grams[data.user == user] = avr_user_age_1grams
+        avr_user_sex_1grams = (float)(num_user_sex_1grams / tweets.__len__())
+        data.avr_sex_user_1grams[data.user == user] = avr_user_sex_1grams
 
+        #2grams
+        num_user_age_2grams = 0
+        num_user_sex_2grams = 0
+        user_ngrams = get_ngrams(tweets, 2)
+
+        for ngram in user_ngrams:
+            if ngram in age_ngrams_dict[2][age][0]:
+                num_user_age_2grams += 1
+            if ngram in sex_ngrams_dict[2][sex][0]:
+                num_user_sex_2grams += 1
+
+        avr_user_age_2grams = (float)(num_user_age_2grams / tweets.__len__())
+        data.avr_age_user_2grams[data.user == user] = avr_user_age_2grams
+        avr_user_sex_2grams = (float)(num_user_sex_2grams / tweets.__len__())
+        data.avr_sex_user_2grams[data.user == user] = avr_user_sex_2grams
+
+        #3grams
+        num_user_age_3grams = 0
+        num_user_sex_3grams = 0
+        user_ngrams = get_ngrams(tweets, 3)
+
+        for ngram in user_ngrams:
+            if ngram in age_ngrams_dict[3][age][0]:
+                num_user_age_3grams += 1
+            if ngram in sex_ngrams_dict[3][sex]:
+                num_user_sex_3grams += 1
+
+        avr_user_age_3grams = (float)(num_user_age_3grams / tweets.__len__())
+        data.avr_age_user_3grams[data.user == user] = avr_user_age_3grams
+        avr_user_sex_3grams = (float)(num_user_sex_3grams / tweets.__len__())
+        data.avr_sex_user_3grams[data.user == user] = avr_user_sex_3grams
+        #AGE SECTION ENDS
+        print (str(index) + " row succeed\n")
+
+    data.to_csv('Resources/data_features_v1.csv', sep = '\t')
     return
 
 
