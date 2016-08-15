@@ -118,6 +118,18 @@ def get_ngrams(texts, n):
     return ngrams
 
 
+def get_punctuation(text):
+    exclude = set(string.punctuation)
+    punctuation_num = 0
+    text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'pic\S+', '', text)
+    punctuation = ''.join(ch for ch in text if ch  in exclude)
+    punctuation_num += punctuation.__len__()
+    return punctuation_num
+
+
 def calculate_ngrams_dicts():
     # Calculate the most popular ngrams for age/sex classes
     # TODO uncomment if neccessary!
@@ -249,11 +261,64 @@ def calculate_ngrams_features():
     return
 
 
+def calculate_punctuation_feature():
+    file = open('Resources/age_ngrams_dict.pkl', 'rb')
+    age_ngrams_dict = pickle.load(file)
+    file = open('Resources/sex_ngrams_dict.pkl', 'rb')
+    sex_ngrams_dict = pickle.load(file)
+    global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
+
+    data = pd.read_csv('Resources/data_features_v1.csv', sep = '\t')
+    data = pd.DataFrame(data)
+    data['avr_sex_punctuation'] = 0
+    data['avr_age_punctuation'] = 0
+    data['avr_user_punctuation'] = 0
+    data['avr_sex_punctuation'] = data['avr_sex_punctuation'].astype(np.float)
+    data['avr_age_punctuation'] = data['avr_age_punctuation'].astype(np.float)
+    data['avr_user_punctuation'] = data['avr_user_punctuation'].astype(np.float)
+
+    for index, row in data.iterrows():
+        user = row['user']
+        punctuations = 0
+        tweets_size = 0
+        try:
+            tweets = users_texts_by_id[user]
+        except:
+            continue
+        for tweet in tweets:
+            punctuations += get_punctuation(tweet)
+            tweets_size += 1
+        avr_punctuation = (float)(punctuations / tweets_size)
+        data.avr_user_punctuation[data.user == user] = avr_punctuation
+
+    for age in users_texts_by_age:
+        age_summary_punctuations = 0
+        age_summary_tweets = 0
+        for tweet in users_texts_by_age[age]:
+            age_summary_tweets += 1
+            age_summary_punctuations += get_punctuation(tweet)
+
+        age_avr_punctuations = (float)(age_summary_punctuations / age_summary_tweets)
+        data.avr_age_punctuation[data.age == age] = age_avr_punctuations
+
+    for sex in users_texts_by_sex:
+        sex_summary_punctuations = 0
+        sex_summary_tweets = 0
+        for tweet in users_texts_by_sex[sex]:
+            sex_summary_tweets += 1
+            sex_summary_punctuations += get_punctuation(tweet)
+
+        sex_avr_punctuations = (float)(sex_summary_punctuations / sex_summary_tweets)
+        data.avr_sex_punctuation[data.sex == sex] = sex_avr_punctuations
+
+        data.to_csv('Resources/data_features_v2.csv', sep='\t')
+
 def main():
     read_data()
     #calculate_mentions_feature()
     #calculate_ngrams_dicts()
-    calculate_ngrams_features()
+    #calculate_ngrams_features()
+    calculate_punctuation_feature()
     return
 
 if __name__ == "__main__":
