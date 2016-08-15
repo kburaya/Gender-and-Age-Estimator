@@ -21,6 +21,7 @@ def extract_mentions (text):
     except:
         return 0
 
+
 def read_data():
     file = open('Resources/users_texts_by_age.pkl', 'rb')
     global users_texts_by_age
@@ -152,6 +153,45 @@ def calculate_ngrams_dicts():
         pickle.dump(age_3gram_dict, f, pickle.HIGHEST_PROTOCOL)
 
         # NGRAMS FEATURE CALCULATION SECTION END
+
+    #TODO calculate sex user ngrams
+    return
+
+
+def calculate_ngrams_features():
+    file = open('Resources/age_1gram_dict.pkl', 'rb')
+    age_1gram_dict = pickle.load(file)
+    #calculate average number of age/sex ngrams per message for every user
+    global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
+    data['avr_age_user_1grams'] = 0
+    data['avr_age_user_2grams'] = 0
+    data['avr_age_user_3grams'] = 0
+    data['avr_age_user_1grams'] = data['avr_age_user_1grams'].astype(np.float)
+    data['avr_age_user_2grams'] = data['avr_age_user_2grams'].astype(np.float)
+    data['avr_age_user_3grams'] = data['avr_age_user_3grams'].astype(np.float)
+
+    for index, row in data.iterrows():
+        user = row['user']
+        age = row['age']
+        sex = row['sex']
+        try:
+            tweets = users_texts_by_id[user]
+        except:
+            continue
+
+        #1grams
+        num_user_1grams = 0
+        user_ngrams = get_ngrams(tweets, 1)
+        age_ngrams_dict = age_1gram_dict[age]
+
+        for ngram in user_ngrams:
+            if ngram in age_ngrams_dict[0]:
+                num_user_1grams += 1
+
+        avr_user_1grams = (float)(num_user_1grams / tweets.__len__())
+        data.avr_age_user_1grams[data.user == user] = avr_user_1grams
+        print ("Success")
+
     return
 
 
@@ -159,7 +199,7 @@ def main():
     read_data()
     #calculate_mentions_feature()
     #calculate_ngrams_dicts()
-
+    calculate_ngrams_features()
     return
 
 if __name__ == "__main__":
