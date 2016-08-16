@@ -2,11 +2,7 @@ import csv
 import re
 import xml.etree.ElementTree as ET
 import pickle
-
 import pandas as pd
-
-def extract_ngrams (message, n):
-    return
 
 
 def extract_user_text (user):
@@ -27,6 +23,7 @@ def extract_user_text (user):
                 continue
 
     return tweets
+
 
 def build_target_data():
     target = open('Resources/data/truth.txt', 'r')
