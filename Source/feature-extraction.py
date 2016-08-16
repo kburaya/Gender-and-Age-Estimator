@@ -7,6 +7,7 @@ import string
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 
+
 #GLOBAL VARIABLES SECTION
 users_texts_by_age = dict()
 users_texts_by_sex = dict()
@@ -49,18 +50,68 @@ def read_data():
     users_texts_by_sex = pickle.load(file)
     file = open('Resources/users_texts_by_id.pkl', 'rb')
     users_texts_by_id = pickle.load(file)
-    data = pd.read_csv('Resources/data.csv')
+    data = pd.read_csv('Resources/data_features.csv', sep = '\t')
     data = pd.DataFrame(data)
 
 
 def define_features():
     # Define feature columns in dataset
     global data
+    # v1
     data['user_1grams'] = 0
     data['user_2grams'] = 0
     data['user_3grams'] = 0
     data['avr_mentions'] = 0
     data['avr_punctuation'] = 0
+    # v2
+    data['avr_text_size'] = 0
+    data['avr_starts_with_capital'] = 0
+    data['avr_ends_with_punctuation'] = 0
+    data['avr_capitals'] = 0
+    data['avr_words_count'] = 0
+    data['vocabulary_richness'] = 0
+
+
+def define_pos_tag_features():
+    # define empty columns for pos-tagging features
+    global data
+    data['CC'] = 0
+    data['CD'] = 0
+    data['DT'] = 0
+    data['EX'] = 0
+    data['FW'] = 0
+    data['IN'] = 0
+    data['JJ'] = 0
+    data['JJR'] = 0
+    data['JJS'] = 0
+    data['LS'] = 0
+    data['MD'] = 0
+    data['NN'] = 0
+    data['NNS'] = 0
+    data['NNP'] = 0
+    data['NNPS'] = 0
+    data['PDT'] = 0
+    data['POS'] = 0
+    data['PRP'] = 0
+    data['PRP$'] = 0
+    data['RB'] = 0
+    data['RBR'] = 0
+    data['RBS'] = 0
+    data['RP'] = 0
+    data['SYM'] = 0
+    data['TO'] = 0
+    data['UH'] = 0
+    data['VB'] = 0
+    data['VBD'] = 0
+    data['VBG'] = 0
+    data['VBN'] = 0
+    data['VBP'] = 0
+    data['VBZ'] = 0
+    data['WDT'] = 0
+    data['WP'] = 0
+    data['WP$'] = 0
+    data['WRB'] = 0
+    return
 
 
 def calculate_mentions_feature():
@@ -113,9 +164,7 @@ def calculate_mentions_feature():
 def get_ngrams(texts, n):
     # Calculates dictionary of ngrams for list of texts
     ngrams = dict()
-    cachedStopWords = stopwords.words("english")
-    exclude = set(string.punctuation)
-    stemmer = PorterStemmer()
+    global cachedStopWords, exclude, stemmer
     for text in texts:
         text = prepare_text(text)
         text = ' '.join([word for word in text if word not in cachedStopWords])
@@ -216,9 +265,30 @@ def calculate_common_ngrams_dict():
     return
 
 
+def calculate_pos_tag_features(texts):
+    # calculate average number of each part of speech per message in user texts, using https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+    pos_tag_dict = dict()
+    for text in texts:
+        # looks life prepare text function but without stemming
+        text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
+        text = re.sub(r'http\S+', '', text)
+        text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
+        text = re.sub(r'pic\S+', '', text)
+        text = nltk.word_tokenize(text)
+
+        text = nltk.pos_tag(text)
+        for pos_tag in text:
+            if pos_tag[1] not in pos_tag_dict:
+                pos_tag_dict[pos_tag[1]] = 1
+            else:
+                pos_tag_dict[pos_tag[1]] += 1
+
+    return pos_tag_dict
+
+
 def calculate_features():
     # Calculates features for every user in dataset
-    global data, users_texts_by_id
+    global data, users_texts_by_id, exclude
     file = open('Resources/common_ngrams_dict.pkl', 'rb')
     common_ngrams_dict = pickle.load(file)
     count = 0
@@ -248,18 +318,63 @@ def calculate_features():
                 data.user_3grams[data.user == user] = avr_ngrams
         # ngram feature section end
 
-        # punctuation/mentions feature section
+        # punctuation/mentions/text size/starts with capital/words count/ends with punctuation features section
         num_punctuations = 0
         num_mentions = 0
+        all_texts_size = 0
+        words_count = 0
+        starts_with_capital = 0
+        ends_with_punctuation = 0
+        # TODO calculate average capitals!
         for text in texts:
             num_punctuations += get_punctuation(text)
             num_mentions += get_mentions(text)
+            all_texts_size += len(text)
+            words_count = len(text.split(' '))
+            try:
+                if text[0].isupper():
+                    starts_with_capital += 1
+            except:
+                print ('Error in text[0]: ' + text)
+            try:
+                if text[len(text) - 1] in exclude:
+                    ends_with_punctuation += 1
+            except:
+                print ('Error in text[last]: ' + text)
+
+        # v1
         avr_punctuation = float(num_punctuations / len(texts))
         avr_mentions = float(num_mentions / len(texts))
+        # v2
+        avr_text_size = float(all_texts_size / len(texts))
+        avr_words_count = float(words_count / len(texts))
+        avr_starts_with_capital = float(starts_with_capital / len(texts))
+        avr_ends_with_punctiation = float(ends_with_punctuation / len(texts))
+
         data.avr_punctuation[data.user == user] = avr_punctuation
         data.avr_mentions[data.user == user] = avr_mentions
-        # punctuation/mentions feature section end
+        data.avr_text_size[data.user == user] = avr_text_size
+        data.avr_words_count[data.user == user] = avr_words_count
+        data.avr_starts_with_capital[data.user == user] = avr_starts_with_capital
+        data.avr_ends_with_punctuation[data.user == user] = avr_ends_with_punctiation
+        # punctuation/mentions/text size/starts with capital/words count/ends with punctuation features section end
 
+        # vocabulary richness feature
+        vocabulary = get_ngrams(texts, 1)
+        vocabulary_size = len(vocabulary)
+        unique_words = sum( x == 1 for x in vocabulary.values() )
+        vocabulary_richness = float(unique_words / vocabulary_size) * 100
+        data.vocabulary_richness[data.user == user] = vocabulary_richness
+        # vocabulary richness feature section ends
+
+        # parts of speech features
+        pos_tag_dict = calculate_pos_tag_features(texts)
+        for pos_tag in pos_tag_dict:
+            try:
+                data.ix[data.user == user, pos_tag] = float(pos_tag_dict[pos_tag] / len(texts))
+            except:
+                print ('Undefined tag: ' + pos_tag)
+        # parts of speech features section ends
         print(str(count) + ' ' + str(user) + ' user calculated')
 
     data.to_csv('Resources/data_features.csv', sep = '\t')
@@ -270,12 +385,11 @@ def main():
     read_data()
     define_features()
 
-    # TODO uncomment to get dictionary files
+    # FIXME uncomment to get dictionary files!
     #calculate_common_ngrams_dict()
-    # calculate_ngrams_dicts()
-
+    #calculate_ngrams_dicts()
+    define_pos_tag_features()
     calculate_features()
-    #calculate_ngrams_features()
     return
 
 if __name__ == "__main__":
