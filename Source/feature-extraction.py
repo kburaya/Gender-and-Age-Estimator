@@ -268,6 +268,7 @@ def calculate_common_ngrams_dict():
 def calculate_pos_tag_features(texts):
     # calculate average number of each part of speech per message in user texts, using https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
     pos_tag_dict = dict()
+    global exclude
     for text in texts:
         # looks life prepare text function but without stemming
         text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
@@ -278,6 +279,8 @@ def calculate_pos_tag_features(texts):
 
         text = nltk.pos_tag(text)
         for pos_tag in text:
+            if pos_tag[1] in exclude:
+                continue
             if pos_tag[1] not in pos_tag_dict:
                 pos_tag_dict[pos_tag[1]] = 1
             else:
