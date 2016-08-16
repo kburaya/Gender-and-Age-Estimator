@@ -12,9 +12,28 @@ users_texts_by_age = dict()
 users_texts_by_sex = dict()
 users_texts_by_id = dict()
 data = pd.DataFrame()
+
+cachedStopWords = stopwords.words("english")
+exclude = set(string.punctuation)
+stemmer = PorterStemmer()
 #GLOBAL VARIABLES SECTION END
 
-def extract_mentions (text):
+def prepare_text(text):
+    global cachedStopWords, exclude, stemmer
+    text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'pic\S+', '', text)
+
+    text = nltk.word_tokenize(text)
+    for i in range(0, text.__len__()):
+        text[i] = text[i].lower()
+        text[i] = stemmer.stem(text[i])
+
+    return text
+
+
+def get_mentions (text):
     try:
         mentions = re.findall('@[A-Za-z0-9_-]*', text)
         return mentions.__len__()
@@ -23,22 +42,28 @@ def extract_mentions (text):
 
 
 def read_data():
+    global users_texts_by_age, users_texts_by_sex, users_texts_by_id, data
     file = open('Resources/users_texts_by_age.pkl', 'rb')
-    global users_texts_by_age
     users_texts_by_age = pickle.load(file)
     file = open('Resources/users_texts_by_sex.pkl', 'rb')
-    global users_texts_by_sex
     users_texts_by_sex = pickle.load(file)
     file = open('Resources/users_texts_by_id.pkl', 'rb')
-    global users_texts_by_id
     users_texts_by_id = pickle.load(file)
-    global data
     data = pd.read_csv('Resources/data.csv')
     data = pd.DataFrame(data)
 
 
+def define_features():
+    # Define feature columns in dataset
+    global data
+    data['user_1grams'] = 0
+    data['user_2grams'] = 0
+    data['user_3grams'] = 0
+    data['avr_mentions'] = 0
+    data['avr_punctuation'] = 0
+
+
 def calculate_mentions_feature():
-    # MENTIONS FEATURES SECTION BEGIN
     # Calculate average number of mentions per user/age group/sex group
     global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
     data['avr_user_mentions'] = 0
@@ -52,7 +77,7 @@ def calculate_mentions_feature():
         except:
             continue
         for tweet in tweets:
-            mentions += extract_mentions(tweet)
+            mentions += get_mentions(tweet)
             tweets_size += 1
         avr_mentions = (float)(mentions / tweets_size)
         data.avr_user_mentions[data.user == user] = avr_mentions
@@ -64,7 +89,7 @@ def calculate_mentions_feature():
         age_summary_tweets = 0
         for tweet in users_texts_by_age[age]:
             age_summary_tweets += 1
-            age_summary_mentions += extract_mentions(tweet)
+            age_summary_mentions += get_mentions(tweet)
 
         age_avr_mentions = (float)(age_summary_mentions / age_summary_tweets)
         data.avr_age_group_mentions[data.age == age] = age_avr_mentions
@@ -76,7 +101,7 @@ def calculate_mentions_feature():
         sex_summary_tweets = 0
         for tweet in users_texts_by_sex[sex]:
             sex_summary_tweets += 1
-            sex_summary_mentions += extract_mentions(tweet)
+            sex_summary_mentions += get_mentions(tweet)
 
         sex_avr_mentions = (float)(sex_summary_mentions / sex_summary_tweets)
         data.avr_sex_group_mentions[data.sex == sex] = sex_avr_mentions
@@ -86,22 +111,13 @@ def calculate_mentions_feature():
 
 
 def get_ngrams(texts, n):
+    # Calculates dictionary of ngrams for list of texts
     ngrams = dict()
     cachedStopWords = stopwords.words("english")
     exclude = set(string.punctuation)
     stemmer = PorterStemmer()
     for text in texts:
-        text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
-        text = re.sub(r'http\S+', '', text)
-        text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
-        text = re.sub(r'pic\S+', '', text)
-
-        text = nltk.word_tokenize(text)
-        for i in range(0, text.__len__()):
-            text[i] = text[i].lower()
-            text[i] = stemmer.stem(text[i])
-
-
+        text = prepare_text(text)
         text = ' '.join([word for word in text if word not in cachedStopWords])
         text = ''.join(ch for ch in text if ch not in exclude)
 
@@ -114,17 +130,13 @@ def get_ngrams(texts, n):
                 ngrams[ngram] = 1
             else:
                 ngrams[ngram] += 1
-
     return ngrams
 
 
 def get_punctuation(text):
-    exclude = set(string.punctuation)
+    # Calculate number of punctuations in given text
     punctuation_num = 0
-    text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
-    text = re.sub(r'http\S+', '', text)
-    text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
-    text = re.sub(r'pic\S+', '', text)
+    text = prepare_text(text)
     punctuation = ''.join(ch for ch in text if ch  in exclude)
     punctuation_num += punctuation.__len__()
     return punctuation_num
@@ -176,149 +188,94 @@ def calculate_ngrams_dicts():
     return
 
 
-def calculate_ngrams_features():
-    file = open('Resources/age_ngrams_dict.pkl', 'rb')
-    age_ngrams_dict = pickle.load(file)
-    file = open('Resources/sex_ngrams_dict.pkl', 'rb')
-    sex_ngrams_dict = pickle.load(file)
+def calculate_common_ngrams_dict():
+    global users_texts_by_id
+    common_ngrams_dict = dict()
+    count = 0
+    for user in users_texts_by_id:
+        count += 1
+        texts = users_texts_by_id[user]
+        for i in range(1, 4):
+            if i not in common_ngrams_dict:
+                common_ngrams_dict[i] = dict()
+            user_ngrams = get_ngrams(texts, i)
+            for ngram in user_ngrams:
+                if ngram not in common_ngrams_dict[i]:
+                    common_ngrams_dict[i][ngram] = 1
+                else:
+                    common_ngrams_dict[i][ngram] += 1
+        print (str(count) + ' ' + str(user) + ' ngrams calculated')
 
-    #calculate average number of age/sex ngrams per message for every user
-    global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
-    data['avr_age_user_1grams'] = 0
-    data['avr_age_user_2grams'] = 0
-    data['avr_age_user_3grams'] = 0
-    data['avr_age_user_1grams'] = data['avr_age_user_1grams'].astype(np.float)
-    data['avr_age_user_2grams'] = data['avr_age_user_2grams'].astype(np.float)
-    data['avr_age_user_3grams'] = data['avr_age_user_3grams'].astype(np.float)
-    data['avr_sex_user_1grams'] = 0
-    data['avr_sex_user_2grams'] = 0
-    data['avr_sex_user_3grams'] = 0
-    data['avr_sex_user_1grams'] = data['avr_sex_user_1grams'].astype(np.float)
-    data['avr_sex_user_2grams'] = data['avr_sex_user_2grams'].astype(np.float)
-    data['avr_sex_user_3grams'] = data['avr_sex_user_3grams'].astype(np.float)
+    for i in range(1, 4):
+        common_ngrams_dict[i] = list(reversed(sorted(common_ngrams_dict[i], key=common_ngrams_dict[i].get)))
+        if common_ngrams_dict[i].__len__() > 1000:
+            common_ngrams_dict[i] = common_ngrams_dict[i][0:1000]
 
-    for index, row in data.iterrows():
-        user = row['user']
-        age = row['age']
-        sex = row['sex']
-        try:
-            tweets = users_texts_by_id[user]
-        except:
-            continue
-
-        #1grams
-        num_user_age_1grams = 0
-        num_user_sex_1grams = 0
-
-        user_ngrams = get_ngrams(tweets, 1)
-
-        for ngram in user_ngrams:
-            if ngram in age_ngrams_dict[1][age][0]:
-                num_user_age_1grams += 1
-            if ngram in sex_ngrams_dict[1][sex][0]:
-                num_user_sex_1grams += 1
-
-        avr_user_age_1grams = (float)(num_user_age_1grams / tweets.__len__())
-        data.avr_age_user_1grams[data.user == user] = avr_user_age_1grams
-        avr_user_sex_1grams = (float)(num_user_sex_1grams / tweets.__len__())
-        data.avr_sex_user_1grams[data.user == user] = avr_user_sex_1grams
-
-        #2grams
-        num_user_age_2grams = 0
-        num_user_sex_2grams = 0
-        user_ngrams = get_ngrams(tweets, 2)
-
-        for ngram in user_ngrams:
-            if ngram in age_ngrams_dict[2][age][0]:
-                num_user_age_2grams += 1
-            if ngram in sex_ngrams_dict[2][sex][0]:
-                num_user_sex_2grams += 1
-
-        avr_user_age_2grams = (float)(num_user_age_2grams / tweets.__len__())
-        data.avr_age_user_2grams[data.user == user] = avr_user_age_2grams
-        avr_user_sex_2grams = (float)(num_user_sex_2grams / tweets.__len__())
-        data.avr_sex_user_2grams[data.user == user] = avr_user_sex_2grams
-
-        #3grams
-        num_user_age_3grams = 0
-        num_user_sex_3grams = 0
-        user_ngrams = get_ngrams(tweets, 3)
-
-        for ngram in user_ngrams:
-            if ngram in age_ngrams_dict[3][age][0]:
-                num_user_age_3grams += 1
-            if ngram in sex_ngrams_dict[3][sex]:
-                num_user_sex_3grams += 1
-
-        avr_user_age_3grams = (float)(num_user_age_3grams / tweets.__len__())
-        data.avr_age_user_3grams[data.user == user] = avr_user_age_3grams
-        avr_user_sex_3grams = (float)(num_user_sex_3grams / tweets.__len__())
-        data.avr_sex_user_3grams[data.user == user] = avr_user_sex_3grams
-        #AGE SECTION ENDS
-        print (str(index) + " row succeed\n")
-
-    data.to_csv('Resources/data_features_v1.csv', sep = '\t')
+    with open('Resources/' + 'common_ngrams_dict' + '.pkl', 'wb') as f:
+        pickle.dump(common_ngrams_dict, f, pickle.HIGHEST_PROTOCOL)
     return
 
 
-def calculate_punctuation_feature():
-    file = open('Resources/age_ngrams_dict.pkl', 'rb')
-    age_ngrams_dict = pickle.load(file)
-    file = open('Resources/sex_ngrams_dict.pkl', 'rb')
-    sex_ngrams_dict = pickle.load(file)
-    global data, users_texts_by_age, users_texts_by_id, users_texts_by_sex
-
-    data = pd.read_csv('Resources/data_features_v1.csv', sep = '\t')
-    data = pd.DataFrame(data)
-    data['avr_sex_punctuation'] = 0
-    data['avr_age_punctuation'] = 0
-    data['avr_user_punctuation'] = 0
-    data['avr_sex_punctuation'] = data['avr_sex_punctuation'].astype(np.float)
-    data['avr_age_punctuation'] = data['avr_age_punctuation'].astype(np.float)
-    data['avr_user_punctuation'] = data['avr_user_punctuation'].astype(np.float)
-
+def calculate_features():
+    # Calculates features for every user in dataset
+    global data, users_texts_by_id
+    file = open('Resources/common_ngrams_dict.pkl', 'rb')
+    common_ngrams_dict = pickle.load(file)
+    count = 0
     for index, row in data.iterrows():
+        count += 1
         user = row['user']
-        punctuations = 0
-        tweets_size = 0
         try:
-            tweets = users_texts_by_id[user]
+            texts = users_texts_by_id[user]
         except:
             continue
-        for tweet in tweets:
-            punctuations += get_punctuation(tweet)
-            tweets_size += 1
-        avr_punctuation = (float)(punctuations / tweets_size)
-        data.avr_user_punctuation[data.user == user] = avr_punctuation
 
-    for age in users_texts_by_age:
-        age_summary_punctuations = 0
-        age_summary_tweets = 0
-        for tweet in users_texts_by_age[age]:
-            age_summary_tweets += 1
-            age_summary_punctuations += get_punctuation(tweet)
+        # ngrams feature section
+        num_ngrams = 0
+        for i in range(1, 4):
+            user_ngrams = get_ngrams(texts, i)
+            for ngram in user_ngrams:
+                if ngram in common_ngrams_dict[i]:
+                    num_ngrams += 1
 
-        age_avr_punctuations = (float)(age_summary_punctuations / age_summary_tweets)
-        data.avr_age_punctuation[data.age == age] = age_avr_punctuations
+            avr_ngrams = float(num_ngrams / len(texts))
 
-    for sex in users_texts_by_sex:
-        sex_summary_punctuations = 0
-        sex_summary_tweets = 0
-        for tweet in users_texts_by_sex[sex]:
-            sex_summary_tweets += 1
-            sex_summary_punctuations += get_punctuation(tweet)
+            if i == 1:
+                data.user_1grams[data.user == user] = avr_ngrams
+            elif i == 2:
+                data.user_2grams[data.user == user] = avr_ngrams
+            elif i == 3:
+                data.user_3grams[data.user == user] = avr_ngrams
+        # ngram feature section end
 
-        sex_avr_punctuations = (float)(sex_summary_punctuations / sex_summary_tweets)
-        data.avr_sex_punctuation[data.sex == sex] = sex_avr_punctuations
+        # punctuation/mentions feature section
+        num_punctuations = 0
+        num_mentions = 0
+        for text in texts:
+            num_punctuations += get_punctuation(text)
+            num_mentions += get_mentions(text)
+        avr_punctuation = float(num_punctuations / len(texts))
+        avr_mentions = float(num_mentions / len(texts))
+        data.avr_punctuation[data.user == user] = avr_punctuation
+        data.avr_mentions[data.user == user] = avr_mentions
+        # punctuation/mentions feature section end
 
-        data.to_csv('Resources/data_features_v2.csv', sep='\t')
+        print(str(count) + ' ' + str(user) + ' user calculated')
+
+    data.to_csv('Resources/data_features.csv', sep = '\t')
+    return
+
 
 def main():
     read_data()
-    #calculate_mentions_feature()
-    #calculate_ngrams_dicts()
+    define_features()
+
+    # TODO uncomment to get dictionary files
+    #calculate_common_ngrams_dict()
+    # calculate_ngrams_dicts()
+
+    calculate_features()
     #calculate_ngrams_features()
-    calculate_punctuation_feature()
     return
 
 if __name__ == "__main__":
