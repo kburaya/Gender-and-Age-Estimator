@@ -6,7 +6,9 @@ from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 import pickle
 import numpy as np
-
+from sklearn.externals import joblib
+from sklearn.preprocessing import StandardScaler
+import json
 
 # GLOBAL VARIABLES SECTION
 cachedStopWords = stopwords.words("english")
@@ -186,11 +188,25 @@ def calculate_features(message):
 
 def callback(ch, method, properties, body):
     print(" [x] Received %r" % (body,))
+    answer = dict()
     message = str(body)
     features = calculate_features(message[2:-2])
-    print (features)
     features = np.array(features).reshape(1, -1)
-    # TODO insert models here
+    scaler = StandardScaler()
+    features = scaler.fit_transform(features)
+
+    file = 'Resources/grid_age_svm.pkl'
+    age_model = joblib.load(file)
+
+    file = 'Resources/log_model_sex.pkl'
+    sex_model = joblib.load(file)
+
+    answer['age'] = [age_model.predict(features)]
+    answer['age'] = str(answer['age']).replace("\\r", "")
+    answer['age'] = str(answer['age']).replace("\\n", "")
+    answer['gender'] = [sex_model.predict(features)]
+
+    print(answer)
     print(" [x] Done")
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
