@@ -70,6 +70,49 @@ def get_punctuation(text):
     return punctuation_num
 
 
+def get_ngrams(texts, n):
+    # Calculates dictionary of ngrams for list of texts
+    ngrams = dict()
+    global cachedStopWords, exclude, stemmer
+    for text in texts:
+        text = prepare_text(text)
+        text = ' '.join([word for word in text if word not in cachedStopWords])
+        text = ''.join(ch for ch in text if ch not in exclude)
+
+        text = nltk.word_tokenize(text)
+
+        ngrams_list = nltk.ngrams(text, n)
+        ngrams_list = [ ''.join(grams) for grams in ngrams_list]
+        for ngram in ngrams_list:
+            if not ngram in ngrams:
+                ngrams[ngram] = 1
+            else:
+                ngrams[ngram] += 1
+    return ngrams
+
+def calculate_pos_tag_features(text):
+# calculate average number of each part of speech in user message, using https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+    pos_tag_dict = dict()
+    global exclude
+    # looks life prepare text function but without stemming
+    text = re.sub(r'@[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'http\S+', '', text)
+    text = re.sub(r'#[A-Za-z0-9_-]*', '', text)
+    text = re.sub(r'pic\S+', '', text)
+    text = nltk.word_tokenize(text)
+
+    text = nltk.pos_tag(text)
+    for pos_tag in text:
+        if pos_tag[1] in exclude:
+            continue
+        if pos_tag[1] not in pos_tag_dict:
+            pos_tag_dict[pos_tag[1]] = 1
+        else:
+            pos_tag_dict[pos_tag[1]] += 1
+
+    return pos_tag_dict
+
+
 def calculate_features(message):
     # Calculate features for model
     features = []
@@ -87,6 +130,57 @@ def calculate_features(message):
 
     # Calculate punctuation
     features.append(get_punctuation(message))
+
+    # Calculate text size
+    features.append(len(message))
+
+    # Calculate starts with capital
+    if len(message) > 0:
+        if message[0].isupper():
+            features.append(1)
+        else:
+            features.append(0)
+    else:
+        features.append(0)
+
+    # Calculate ends with punctuation
+    global exclude
+    if len(message) > 0:
+        if message[len(message) - 1] in exclude:
+            features.append(1)
+        else:
+            features.append(0)
+    else:
+        features.append(0)
+
+    # TODO Calculate average capitals
+    features.append(0)
+
+    # Calculate words count
+    features.append(len(message.split(' ')))
+
+    # calculate vocabulary richness
+    vocabulary = get_ngrams(message, 1)
+    vocabulary_size = len(vocabulary)
+    unique_words = sum(x == 1 for x in vocabulary.values())
+    vocabulary_richness = float(unique_words / vocabulary_size) * 100
+    features.append(vocabulary_richness)
+
+    # TODO Calculate pos-tag feature
+    pos_tags = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR',
+                'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP',
+                'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG',
+                'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB', ',', '.', ')', '(', ':',
+                '$']
+
+    pos_tag_dict = calculate_pos_tag_features(message)
+    for pos_tag in pos_tags:
+        if pos_tag in pos_tag_dict:
+            features.append(pos_tag_dict[pos_tag])
+        else:
+            features.append(0)
+
+    print(len(features))
     return features
 
 
