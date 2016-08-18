@@ -1,6 +1,6 @@
 Age and Gender Estimator
 --------------------
-Client-server service, that predicts user age and gender. Client sends text messages to RabbitMQ, server(s) recieve messages and predict age/gender and print result to console or save to file.
+Client-server service, that predicts user age and gender. Client sends text messages to RabbitMQ, server(s) receive messages and predict age/gender and print result to console or save to file.
 
 
 ### File list
