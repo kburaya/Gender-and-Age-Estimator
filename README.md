@@ -71,6 +71,7 @@ The main resource to study what features are needed to predict age/gender was th
 
 ### Models
 To predict age/gender the following models were fitted:
+
 1. Logistic Regression (sklearn)
 2. Gradient Boosting Classifier (sklearn)
 3. Support Vector Classifier (sklearn)
