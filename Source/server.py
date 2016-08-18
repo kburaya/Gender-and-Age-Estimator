@@ -15,6 +15,8 @@ cachedStopWords = stopwords.words("english")
 exclude = set(string.punctuation)
 stemmer = PorterStemmer()
 common_ngrams_dict = dict()
+
+
 # GLOBAL VARIABLES SECTION ENDS
 
 
@@ -33,7 +35,7 @@ def prepare_text(text):
     return text
 
 
-def get_mentions (text):
+def get_mentions(text):
     try:
         mentions = re.findall('@[A-Za-z0-9_-]*', text)
         return mentions.__len__()
@@ -67,7 +69,7 @@ def get_punctuation(text):
     # Calculate number of punctuations in given text
     punctuation_num = 0
     text = prepare_text(text)
-    punctuation = ''.join(ch for ch in text if ch  in exclude)
+    punctuation = ''.join(ch for ch in text if ch in exclude)
     punctuation_num += punctuation.__len__()
     return punctuation_num
 
@@ -84,7 +86,7 @@ def get_ngrams(texts, n):
         text = nltk.word_tokenize(text)
 
         ngrams_list = nltk.ngrams(text, n)
-        ngrams_list = [ ''.join(grams) for grams in ngrams_list]
+        ngrams_list = [''.join(grams) for grams in ngrams_list]
         for ngram in ngrams_list:
             if not ngram in ngrams:
                 ngrams[ngram] = 1
@@ -92,8 +94,9 @@ def get_ngrams(texts, n):
                 ngrams[ngram] += 1
     return ngrams
 
+
 def calculate_pos_tag_features(text):
-# calculate average number of each part of speech in user message, using https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+    # calculate average number of each part of speech in user message, using https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
     pos_tag_dict = dict()
     global exclude
     # looks life prepare text function but without stemming
@@ -168,7 +171,7 @@ def calculate_features(message):
     vocabulary_richness = float(unique_words / vocabulary_size) * 100
     features.append(vocabulary_richness)
 
-    # TODO Calculate pos-tag feature
+    # Calculate pos-tag feature
     pos_tags = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR',
                 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP',
                 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG',
@@ -182,7 +185,6 @@ def calculate_features(message):
         else:
             features.append(0)
 
-    print(len(features))
     return features
 
 
@@ -202,11 +204,14 @@ def callback(ch, method, properties, body):
     sex_model = joblib.load(file)
 
     answer['age'] = [age_model.predict(features)]
-    answer['age'] = str(answer['age']).replace("\\r", "")
-    answer['age'] = str(answer['age']).replace("\\n", "")
-    answer['gender'] = [sex_model.predict(features)]
+    age = answer['age'][0][0:1][0]
 
-    print(answer)
+    age = str(age).replace("\r", "")
+    age = str(age).replace("\n", "")
+    answer['gender'] = [sex_model.predict(features)]
+    gender = answer['gender'][0][0:1][0]
+
+    print('Age: ' + str(age) + ', gender: ' + str(gender))
     print(" [x] Done")
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
