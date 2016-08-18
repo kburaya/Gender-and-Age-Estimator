@@ -12,7 +12,7 @@ Client-server service, that predicts user age and gender. Client sends text mess
 	4. :page_facing_up: **feature-extraction.py** - calculating features
 	5. :page_facing_up: **Gender_Age_Models.ipynb** - building and fitting different models
 2. :file_folder: **Resources**
-	1. :file_folder: **data** - initial input data, ***.xml** files with users tweets, used for feature calculation
+	1. :file_folder: **data** - initial input data, **.xml** files with users tweets, used for feature calculation
 	2. :file_folder: **dicts** - dictionary files for calculation features, such as most common ngrams, users texts corpuses and etc.
 	3. :file_folder: **models** - different models that were fitted to predict age/gender
 	4. :page_facing_up: **data.csv** - initial file with target variables and user ids
