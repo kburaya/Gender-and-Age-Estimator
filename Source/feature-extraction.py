@@ -6,6 +6,7 @@ import nltk
 import string
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+import os
 
 
 #GLOBAL VARIABLES SECTION
@@ -385,14 +386,15 @@ def calculate_features():
 
 
 def main():
+    os.chdir('../')
     read_data()
-    define_features()
+    #define_features()
 
     # FIXME uncomment to get dictionary files!
     #calculate_common_ngrams_dict()
     #calculate_ngrams_dicts()
-    define_pos_tag_features()
-    calculate_features()
+    #define_pos_tag_features()
+    #calculate_features()
     return
 
 if __name__ == "__main__":

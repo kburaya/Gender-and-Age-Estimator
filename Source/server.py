@@ -8,7 +8,7 @@ import pickle
 import numpy as np
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
-import json
+import os
 
 # GLOBAL VARIABLES SECTION
 cachedStopWords = stopwords.words("english")
@@ -158,7 +158,7 @@ def calculate_features(message):
     else:
         features.append(0)
 
-    # TODO Calculate average capitals
+    # Calculate average capitals
     features.append(0)
 
     # Calculate words count
@@ -217,6 +217,7 @@ def callback(ch, method, properties, body):
 
 
 def main():
+    os.chdir('../');
     connection = pika.BlockingConnection(pika.ConnectionParameters(
         host='localhost'))
     channel = connection.channel()
