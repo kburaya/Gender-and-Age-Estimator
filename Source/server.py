@@ -9,12 +9,16 @@ import numpy as np
 from sklearn.externals import joblib
 from sklearn.preprocessing import StandardScaler
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 # GLOBAL VARIABLES SECTION
 cachedStopWords = stopwords.words("english")
 exclude = set(string.punctuation)
 stemmer = PorterStemmer()
 common_ngrams_dict = dict()
+age_ngrams_dict = dict()
+sex_ngrams_dict = dict()
 
 
 # GLOBAL VARIABLES SECTION ENDS
@@ -121,70 +125,123 @@ def calculate_pos_tag_features(text):
 def calculate_features(message):
     # Calculate features for model
     features = []
+    global common_ngrams_dict, sex_ngrams_dict, age_ngrams_dict
     file = open('Resources/common_ngrams_dict.pkl', 'rb')
-    global common_ngrams_dict
     common_ngrams_dict = pickle.load(file)
+    file = open('Resources/age_ngrams_dict.pkl', 'rb')
+    age_ngrams_dict = pickle.load(file)
+    file = open('Resources/sex_ngrams_dict.pkl', 'rb')
+    sex_ngrams_dict = pickle.load(file)
 
     # Calculate ngrams feature
     for i in range(1, 4):
         features.append(get_ngrams_number(message, i))
     # Calculate ngram feature end
 
-    # Calculate mentions feature
-    features.append(get_mentions(message))
+    # Calculate age unigrams
+    ngram_18_24 = 0
+    ngram_25_34 = 0
+    ngram_35_49 = 0
+    ngram_50_64 = 0
+    ngram_65_xx = 0
+    ngram_male = 0
+    ngram_female = 0
 
-    # Calculate punctuation
-    features.append(get_punctuation(message))
+    for age in age_ngrams_dict[1]:
+        unigrams_num = 0
+        user_unigrams = get_ngrams([message], 1)
+        for unigram in user_unigrams:
+            if unigram in age_ngrams_dict[1][age][0]:
+                unigrams_num += 1
+        if age == '18-24\n':
+            ngram_18_24 = unigrams_num
+        elif age == '25-34\n':
+            ngram_25_34 = unigrams_num
+        elif age == '35-49\n':
+            ngram_35_49 = unigrams_num
+        elif age == '50-64\n':
+            ngram_50_64 = unigrams_num
+        elif age == '65-xx\n':
+            ngram_65_xx = unigrams_num
 
-    # Calculate text size
-    features.append(len(message))
+    features.append(ngram_18_24)
+    features.append(ngram_25_34)
+    features.append(ngram_35_49)
+    features.append(ngram_50_64)
+    features.append(ngram_65_xx)
 
-    # Calculate starts with capital
-    if len(message) > 0:
-        if message[0].isupper():
-            features.append(1)
-        else:
-            features.append(0)
-    else:
-        features.append(0)
+    # Calculate gender unigrams
+    for gender in sex_ngrams_dict[1]:
+        unigrams_num = 0
+        user_unigrams = get_ngrams([message], 1)
+        for unigram in user_unigrams:
+            if unigram in sex_ngrams_dict[1][gender][0]:
+                unigrams_num += 1
+        if gender == 'MALE':
+            ngram_male = unigrams_num
+        elif gender == 'FEMALE':
+            ngram_female = unigrams_num
 
-    # Calculate ends with punctuation
-    global exclude
-    if len(message) > 0:
-        if message[len(message) - 1] in exclude:
-            features.append(1)
-        else:
-            features.append(0)
-    else:
-        features.append(0)
+    features.append(ngram_male)
+    features.append(ngram_female)
 
-    # Calculate average capitals
-    features.append(0)
+    # FIXME uncomment when will having the good model for these features
+    # # Calculate mentions feature
+    # features.append(get_mentions(message))
+    #
+    # # Calculate punctuation
+    # features.append(get_punctuation(message))
+    #
+    # # Calculate text size
+    # features.append(len(message))
+    #
+    # # Calculate starts with capital
+    # if len(message) > 0:
+    #     if message[0].isupper():
+    #         features.append(1)
+    #     else:
+    #         features.append(0)
+    # else:
+    #     features.append(0)
+    #
+    # # Calculate ends with punctuation
+    # global exclude
+    # if len(message) > 0:
+    #     if message[len(message) - 1] in exclude:
+    #         features.append(1)
+    #     else:
+    #         features.append(0)
+    # else:
+    #     features.append(0)
+    #
+    # # Calculate average capitals
+    # features.append(0)
+    #
+    # # Calculate words count
+    # features.append(len(message.split(' ')))
+    #
+    # # calculate vocabulary richness
+    # vocabulary = get_ngrams(message, 1)
+    # vocabulary_size = len(vocabulary)
+    # unique_words = sum(x == 1 for x in vocabulary.values())
+    # vocabulary_richness = float(unique_words / vocabulary_size) * 100
+    # features.append(vocabulary_richness)
+    #
+    # # Calculate pos-tag feature
+    # pos_tags = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR',
+    #             'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP',
+    #             'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG',
+    #             'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB', ',', '.', ')', '(', ':',
+    #             '$']
+    #
+    # pos_tag_dict = calculate_pos_tag_features(message)
+    # for pos_tag in pos_tags:
+    #     if pos_tag in pos_tag_dict:
+    #         features.append(pos_tag_dict[pos_tag])
+    #     else:
+    #         features.append(0)
 
-    # Calculate words count
-    features.append(len(message.split(' ')))
-
-    # calculate vocabulary richness
-    vocabulary = get_ngrams(message, 1)
-    vocabulary_size = len(vocabulary)
-    unique_words = sum(x == 1 for x in vocabulary.values())
-    vocabulary_richness = float(unique_words / vocabulary_size) * 100
-    features.append(vocabulary_richness)
-
-    # Calculate pos-tag feature
-    pos_tags = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR',
-                'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP',
-                'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG',
-                'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB', ',', '.', ')', '(', ':',
-                '$']
-
-    pos_tag_dict = calculate_pos_tag_features(message)
-    for pos_tag in pos_tags:
-        if pos_tag in pos_tag_dict:
-            features.append(pos_tag_dict[pos_tag])
-        else:
-            features.append(0)
-
+    print (features)
     return features
 
 
@@ -194,13 +251,13 @@ def callback(ch, method, properties, body):
     message = str(body)
     features = calculate_features(message[2:-2])
     features = np.array(features).reshape(1, -1)
-    scaler = StandardScaler()
-    features = scaler.fit_transform(features)
+    #scaler = StandardScaler()
+    #features = scaler.fit_transform(features)
 
-    file = 'Resources/grid_age_svm.pkl'
+    file = 'Resources/AGE_model.pkl'
     age_model = joblib.load(file)
 
-    file = 'Resources/log_model_sex.pkl'
+    file = 'Resources/GENDER_model.pkl'
     sex_model = joblib.load(file)
 
     answer['age'] = [age_model.predict(features)]

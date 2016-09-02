@@ -1,6 +1,8 @@
 import pika
 import json
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def main():
@@ -15,7 +17,7 @@ def main():
     messages = f.read();
     messages = json.loads(messages);
 
-    for i in range(0, messages.__len__() + 1):
+    for i in range(0, messages['messages'].__len__()):
         try:
             message = messages['messages'][i]
             channel.basic_publish(exchange='',
