@@ -66,13 +66,14 @@ def main():
             else:
                 users_texts_by_id[row['user']].append(tweet)
 
-    with open('Resources/' + 'users_texts_by_age' + '.pkl', 'wb') as f:
-        pickle.dump(users_texts_by_age, f, pickle.HIGHEST_PROTOCOL)
-    with open('Resources/' + 'users_texts_by_sex' + '.pkl', 'wb') as f:
-        pickle.dump(users_texts_by_sex, f, pickle.HIGHEST_PROTOCOL)
-    with open('Resources/' + 'users_texts_by_id' + '.pkl', 'wb') as f:
-        pickle.dump(users_texts_by_id, f, pickle.HIGHEST_PROTOCOL)
+    #with open('Resources/' + 'users_texts_by_age' + '.pkl', 'wb') as f:
+    #    pickle.dump(users_texts_by_age, f, pickle.HIGHEST_PROTOCOL)
+    #with open('Resources/' + 'users_texts_by_sex' + '.pkl', 'wb') as f:
+    #    pickle.dump(users_texts_by_sex, f, pickle.HIGHEST_PROTOCOL)
+    #with open('Resources/' + 'users_texts_by_id' + '.pkl', 'wb') as f:
+    #    pickle.dump(users_texts_by_id, f, pickle.HIGHEST_PROTOCOL)
 
+    print("Success")
 
 if __name__ == "__main__":
     main()
